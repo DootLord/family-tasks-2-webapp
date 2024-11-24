@@ -20,7 +20,7 @@ interface ITaskSheetData {
 }
 
 export default function TaskTable() {
-    let [taskSheetData, setTaskSheetData] = useState<ITaskSheetData | undefined>(undefined);
+    let [taskSheetData, setTaskSheetData] = useState<ITaskSheetData | null | undefined>(undefined);
     const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
     useEffect(() => {
         async function fetchData() {
@@ -28,6 +28,7 @@ export default function TaskTable() {
 
             if (!fetchResponse.ok) {
                 console.error("Failed to fetch task sheet data.");
+                setTaskSheetData(null);
                 return;
             }
 
@@ -39,9 +40,15 @@ export default function TaskTable() {
         fetchData();
     })
 
+    if (taskSheetData === null) {
+        return <div>Failed to fetch task sheet data. Make sure the API is on, dummy...</div>
+    }
+
     if (!taskSheetData) {
         return <div>Loading...</div>
     }
+
+    
 
     const rows = processTableData(taskSheetData);
 
