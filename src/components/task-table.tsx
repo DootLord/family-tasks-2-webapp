@@ -38,7 +38,7 @@ export default function TaskTable() {
         }
 
         fetchData();
-    })
+    }, []);
 
     if (taskSheetData === null) {
         return <div>Failed to fetch task sheet data. Make sure the API is on, dummy...</div>
@@ -68,12 +68,12 @@ export default function TaskTable() {
                 </TableHead>
                 <TableBody>
                     {
-                    rows.map((row, index) => (
-                        <TableRow key={index}>
-                            <TableCell>{days[index]}</TableCell>
+                    rows.map((row, rowIndex) => (
+                        <TableRow key={rowIndex}>
+                            <TableCell>{days[rowIndex]}</TableCell>
                             {
-                                row.map((task, index) => (
-                                    <TableCell key={index}>{task}</TableCell>
+                                row.map((task, taskIndex) => (
+                                    <TableCell onClick={handleCellClick} data-day={days[rowIndex]} data-index={taskIndex} key={taskIndex}>{task}</TableCell>
                                 ))
                             }
                         </TableRow>
@@ -85,6 +85,10 @@ export default function TaskTable() {
         </TableContainer>
     )
 
+}
+
+function handleCellClick(e: React.MouseEvent) {
+    console.log(e.currentTarget);
 }
 
 function processTableData(taskSheetData: ITaskSheetData): string[][] {
