@@ -4,7 +4,12 @@ import Table from "@mui/material/Table";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
-import { TableBody } from "@mui/material";
+import { TableBody, Zoom } from "@mui/material";
+
+enum TaskStatus {
+    INCOMPLETE = "incomplete",
+    COMPLETE = "complete",
+}
 
 interface ITaskSheetData {
     "id": string,
@@ -19,48 +24,49 @@ interface ITaskSheetData {
     "sunday": string[]
 }
 
-export default function TaskTable() {
+export default function TaskTable({ setSnackbarOpen }: { setSnackbarOpen: (open: boolean) => void }) {
     let [taskSheetData, setTaskSheetData] = useState<ITaskSheetData | null | undefined>(undefined);
+    let [taskSheetStatus, setTaskSheetStatus] = useState<TaskStatus[][] | undefined>(undefined);
     const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+
     useEffect(() => {
-        async function fetchData() {
-            const fetchResponse = await fetch("/api/sheet");
-
-            if (!fetchResponse.ok) {
-                console.error("Failed to fetch task sheet data.");
-                setTaskSheetData(null);
-                return;
-            }
-
-            const fetchData = await fetchResponse.json();
-
-            setTaskSheetData(fetchData);
-        }
-
         fetchData();
     }, []);
+
+    async function fetchData() {
+        const fetchResponse = await fetch("/api/sheet");
+
+        if (!fetchResponse.ok) {
+            console.error("Failed to fetch task sheet data.");
+            setTaskSheetData(null);
+            return;
+        }
+
+        const fetchData = await fetchResponse.json();
+
+        setTaskSheetData(fetchData);
+        await fetchSheetStatus();
+    }
 
     if (taskSheetData === null) {
         return <div>Failed to fetch task sheet data. Make sure the API is on, dummy...</div>
     }
 
-    if (!taskSheetData) {
+    if (!taskSheetData || !taskSheetStatus) {
         return <div>Loading...</div>
     }
-
-    
 
     const rows = processTableData(taskSheetData);
 
     return (
-        <TableContainer>
+        <TableContainer >
             <Table sx={{ mindWidth: 650 }} aria-label="Task Table">
                 <TableHead>
                     <TableRow>
-                        <TableCell>X</TableCell>
+                        <TableCell align={'center'}>X</TableCell>
                         {
                             taskSheetData.jobs.map((job, index) => (
-                                <TableCell key={index}>{job}</TableCell>
+                                <TableCell align={'center'} key={index}>{job}</TableCell>
                             ))
                         }
 
@@ -68,16 +74,27 @@ export default function TaskTable() {
                 </TableHead>
                 <TableBody>
                     {
-                    rows.map((row, rowIndex) => (
-                        <TableRow key={rowIndex}>
-                            <TableCell>{days[rowIndex]}</TableCell>
-                            {
-                                row.map((task, taskIndex) => (
-                                    <TableCell onClick={handleCellClick} data-day={days[rowIndex]} data-index={taskIndex} key={taskIndex}>{task}</TableCell>
-                                ))
-                            }
-                        </TableRow>
-                    ))
+                        rows.map((row, rowIndex) => (
+                            <TableRow key={rowIndex}>
+                                <TableCell align={'center'}>{days[rowIndex]}</TableCell>
+                                {
+                                    row.map((task, taskIndex) => (
+                                        <Zoom in={true} style={{ transitionDelay: ((25 * (rowIndex + 1)) * (taskIndex + 1)) + 'ms' }}>
+                                            <TableCell
+                                                onClick={() => handleCellClick(days[rowIndex], taskIndex)}
+                                                className={getClassByStatus(rowIndex, taskIndex)}
+                                                data-day={days[rowIndex]}
+                                                data-index={taskIndex}
+                                                align={'center'}
+                                                key={rowIndex + taskIndex}>
+                                                {task}
+                                            </TableCell>
+                                        </Zoom>
+
+                                    ))
+                                }
+                            </TableRow>
+                        ))
                     }
                 </TableBody>
             </Table>
@@ -85,11 +102,51 @@ export default function TaskTable() {
         </TableContainer>
     )
 
+    function getClassByStatus(dayIndex: number, taskIndex: number): string {
+        if (!taskSheetStatus) {
+            return "";
+        }
+        return taskSheetStatus[dayIndex][taskIndex] === TaskStatus.COMPLETE ? "task-complete" : "task-incomplete";
+    }
+
+    async function fetchSheetStatus() {
+        const fetchResponse = await fetch("/api/sheet/status");
+
+        if (!fetchResponse.ok) {
+            console.error("Failed to fetch task sheet status.");
+            return;
+        }
+
+        const fetchData = await fetchResponse.json();
+        setTaskSheetStatus(fetchData);
+    }
+
+    async function handleCellClick(day: string, taskIndex: number) {
+        const fetchResponse = await fetch("/api/sheet/task", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                day,
+                taskIndex
+            })
+        });
+
+        if (!fetchResponse.ok) {
+            console.error("Failed to update task status.");
+            return;
+        }
+
+        setSnackbarOpen(true);
+
+
+        await fetchSheetStatus();
+    }
+
 }
 
-function handleCellClick(e: React.MouseEvent) {
-    console.log(e.currentTarget);
-}
+
 
 function processTableData(taskSheetData: ITaskSheetData): string[][] {
     const rows = [];

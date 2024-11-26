@@ -4,10 +4,28 @@ import '@fontsource/roboto/400.css';
 import '@fontsource/roboto/500.css';
 import '@fontsource/roboto/700.css';
 import TaskTable from './components/task-table';
+import Snackbar from '@mui/material/Snackbar';
+import React from 'react';
 
 function App() {
+    let [snackbarOpen, setSnackbarOpen] = React.useState(false);
 
-  return <TaskTable />
+
+    function handleSnackbarClose() {
+        setSnackbarOpen(false);
+    }
+
+    return (
+        <div>
+            <TaskTable setSnackbarOpen={setSnackbarOpen} />
+            <Snackbar
+                open={snackbarOpen}
+                autoHideDuration={5000}
+                onClose={handleSnackbarClose}
+                message="Task sheet data updated."
+            />
+        </div>
+    )
 
 }
 
