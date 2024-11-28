@@ -4,11 +4,36 @@ import Table from "@mui/material/Table";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
-import { TableBody, Zoom } from "@mui/material";
+import { Menu, MenuItem, TableBody, Zoom } from "@mui/material";
+
+const dateFormatOptions: Intl.DateTimeFormatOptions = {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true
+};
+
+interface ITaskData {
+    status: TaskStatus,
+    updated: string
+}
 
 enum TaskStatus {
     INCOMPLETE = "incomplete",
     COMPLETE = "complete",
+}
+
+enum DayToIndex {
+    "monday" = 0,
+    "tuesday" = 1,
+    "wednesday" = 2,
+    "thursday" = 3,
+    "friday" = 4,
+    "saturday" = 5,
+    "sunday" = 6
 }
 
 interface ITaskSheetData {
@@ -24,9 +49,23 @@ interface ITaskSheetData {
     "sunday": string[]
 }
 
-export default function TaskTable({ setSnackbarOpen }: { setSnackbarOpen: (open: boolean) => void }) {
+interface ITaskSelection {
+    day: string,
+    taskIndex: number
+}
+
+interface ITaskTableProps {
+    setSnackbarOpen: (open: boolean) => void,
+    setTaskTime: (time: string) => void
+}
+
+export default function TaskTable({ setSnackbarOpen, setTaskTime }: ITaskTableProps) {
     let [taskSheetData, setTaskSheetData] = useState<ITaskSheetData | null | undefined>(undefined);
-    let [taskSheetStatus, setTaskSheetStatus] = useState<TaskStatus[][] | undefined>(undefined);
+    let [taskSheetStatus, setTaskSheetStatus] = useState<ITaskData[][] | undefined>(undefined);
+    let [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
+    let [taskSelection, setTaskSelection] = useState<ITaskSelection | null>(null);
+    let uniqueId = 0;
+    let menuOpen = Boolean(menuAnchor);
     const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
     useEffect(() => {
@@ -75,13 +114,13 @@ export default function TaskTable({ setSnackbarOpen }: { setSnackbarOpen: (open:
                 <TableBody>
                     {
                         rows.map((row, rowIndex) => (
-                            <TableRow key={rowIndex}>
+                            <TableRow key={uniqueId++}>
                                 <TableCell align={'center'}>{days[rowIndex]}</TableCell>
                                 {
                                     row.map((task, taskIndex) => (
-                                        <Zoom in={true} style={{ transitionDelay: ((25 * (rowIndex + 1)) * (taskIndex + 1)) + 'ms' }}>
+                                        <Zoom key={uniqueId++} in={true} style={{ transitionDelay: ((25 * (rowIndex + 1)) * (taskIndex + 1)) + 'ms' }}>
                                             <TableCell
-                                                onClick={() => handleCellClick(days[rowIndex], taskIndex)}
+                                                onClick={(event) => handleCellClick(event, days[rowIndex], taskIndex)}
                                                 className={getClassByStatus(rowIndex, taskIndex)}
                                                 data-day={days[rowIndex]}
                                                 data-index={taskIndex}
@@ -99,14 +138,57 @@ export default function TaskTable({ setSnackbarOpen }: { setSnackbarOpen: (open:
                 </TableBody>
             </Table>
 
+            <Menu
+                anchorEl={menuAnchor}
+                open={menuOpen}
+                onClose={() => setMenuAnchor(null)}
+            >
+                <MenuItemList />
+            </Menu>
+
         </TableContainer>
     )
+
+    function handleCellClick(event: React.MouseEvent<HTMLTableCellElement>, day: string, taskIndex: number) {
+        const target = event.target as HTMLElement;
+        setTaskSelection({
+            day,
+            taskIndex
+        });
+        setMenuAnchor(target);
+    }
+
+    function MenuItemList() {
+        if (!taskSelection || !taskSheetStatus) {
+            return null;
+        }
+
+        let menuItems = [];
+
+        // V this is gross, but it's the only way to get the key of an enum from a string. I should've just used numbers...
+        const dayKey = taskSelection.day.toLowerCase() as keyof typeof DayToIndex;
+        const dayIndex = DayToIndex[dayKey] as number;
+        const taskStatus = taskSheetStatus[dayIndex][taskSelection.taskIndex].status;
+
+        switch (taskStatus) {
+            case TaskStatus.COMPLETE:
+                menuItems.push(<MenuItem key="markIncomplete" onClick={() => setTaskStatus(false)} >Mark Incomplete</MenuItem>);
+                menuItems.push(<MenuItem key="markComplete" onClick={() => displayTaskData(dayIndex, taskSelection.taskIndex)} >Get Details</MenuItem>);
+
+                break;
+            case TaskStatus.INCOMPLETE:
+                menuItems.push(<MenuItem key="markComplete" onClick={() => setTaskStatus(true)} >Mark Complete</MenuItem>);
+                break;
+        }
+
+        return menuItems;
+    }
 
     function getClassByStatus(dayIndex: number, taskIndex: number): string {
         if (!taskSheetStatus) {
             return "";
         }
-        return taskSheetStatus[dayIndex][taskIndex] === TaskStatus.COMPLETE ? "task-complete" : "task-incomplete";
+        return taskSheetStatus[dayIndex][taskIndex].status === TaskStatus.COMPLETE ? "task-complete" : "task-incomplete";
     }
 
     async function fetchSheetStatus() {
@@ -121,16 +203,14 @@ export default function TaskTable({ setSnackbarOpen }: { setSnackbarOpen: (open:
         setTaskSheetStatus(fetchData);
     }
 
-    async function handleCellClick(day: string, taskIndex: number) {
+    async function setTaskStatus(completeTask: boolean = true) {
+        setMenuAnchor(null);
         const fetchResponse = await fetch("/api/sheet/task", {
-            method: "POST",
+            method: completeTask ? "POST" : "DELETE",
             headers: {
                 "Content-Type": "application/json"
             },
-            body: JSON.stringify({
-                day,
-                taskIndex
-            })
+            body: JSON.stringify(taskSelection)
         });
 
         if (!fetchResponse.ok) {
@@ -139,9 +219,18 @@ export default function TaskTable({ setSnackbarOpen }: { setSnackbarOpen: (open:
         }
 
         setSnackbarOpen(true);
-
-
         await fetchSheetStatus();
+    }
+
+    function displayTaskData(dayIndex: number, taskIndex: number) {
+        setMenuAnchor(null);
+        if (!taskSheetData || !taskSheetStatus) {
+            return;
+        }
+
+        const updateTime = taskSheetStatus[dayIndex][taskIndex].updated;
+        const readableTime = new Date(updateTime).toLocaleString('en-GB', dateFormatOptions);
+        setTaskTime(readableTime);
     }
 
 }
