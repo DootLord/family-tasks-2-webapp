@@ -12,6 +12,11 @@
     color: rgba(0, 0, 0, 0.87);
 }
 
+.current-day {
+    background-color: #d9d9d9;
+    color: #000000 !important;
+}
+
 .task-complete {
     background-color: green;
     color: #f5f5f5 !important;

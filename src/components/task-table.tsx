@@ -68,6 +68,7 @@ export default function TaskTable({ setSnackbarOpen, setTaskTime, isEnabled }: I
     let [taskSelection, setTaskSelection] = useState<ITaskSelection | null>(null);
     let uniqueId = 0;
     let menuOpen = Boolean(menuAnchor);
+
     const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
     useEffect(() => {
@@ -125,7 +126,7 @@ export default function TaskTable({ setSnackbarOpen, setTaskTime, isEnabled }: I
                     {
                         rows.map((row, rowIndex) => (
                             <TableRow key={uniqueId++}>
-                                <TableCell align={'center'}>{days[rowIndex]}</TableCell>
+                                <TableCell align={'center'} className={getWeekHighlight(rowIndex + 1)}>{days[rowIndex]}</TableCell>
                                 {
                                     row.map((task, taskIndex) => (
                                         <Zoom key={uniqueId++} in={true} style={{ transitionDelay: ((25 * (rowIndex + 1)) * (taskIndex + 1)) + 'ms' }}>
@@ -245,7 +246,10 @@ export default function TaskTable({ setSnackbarOpen, setTaskTime, isEnabled }: I
 
 }
 
-
+function getWeekHighlight(dayIndex: number): string {
+    const today = new Date().getDay();
+    return today === dayIndex ? "current-day" : "";
+}
 
 function processTableData(taskSheetData: ITaskSheetData): string[][] {
     const rows = [];
