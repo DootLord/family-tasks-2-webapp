@@ -10,18 +10,27 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogContentText from '@mui/material/DialogContentText';
 import Dialog from '@mui/material/Dialog';
+import UserChip from './components/user-chip';
+import Container from '@mui/material/Container';
+import { Breakpoint } from '@mui/material/styles';
+
+
 
 function App() {
     let [snackbarOpen, setSnackbarOpen] = React.useState(false);
     let [taskTime, setTaskTime] = React.useState<string | null>(null);
+    let [username, setUsername] = React.useState<string | null>(null);
+    let [containerWidth, setContainerWidth] = React.useState<Breakpoint>("sm");
 
     function handleSnackbarClose() {
         setSnackbarOpen(false);
     }
 
     return (
-        <React.Fragment>
-            <TaskTable setSnackbarOpen={setSnackbarOpen} setTaskTime={setTaskTime} />
+        <Container maxWidth={containerWidth}>
+            <TaskTable setSnackbarOpen={setSnackbarOpen} setTaskTime={setTaskTime} isEnabled={Boolean(username)} />
+            <UserChip username={username} setUsername={setUsername} setContainerWidth={setContainerWidth} />
+
             <Snackbar
                 open={snackbarOpen}
                 autoHideDuration={5000}
@@ -40,7 +49,7 @@ function App() {
                     </DialogContentText>
                 </DialogContent>
             </Dialog>
-        </React.Fragment>
+        </Container>
     )
 
 }

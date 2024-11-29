@@ -4,7 +4,8 @@ import Table from "@mui/material/Table";
 import TableHead from "@mui/material/TableHead";
 import TableRow from "@mui/material/TableRow";
 import TableCell from "@mui/material/TableCell";
-import { Menu, MenuItem, TableBody, Zoom } from "@mui/material";
+import { Alert, Menu, MenuItem, TableBody, Zoom } from "@mui/material";
+import InfoIcon from '@mui/icons-material/Check';
 
 const dateFormatOptions: Intl.DateTimeFormatOptions = {
     year: 'numeric',
@@ -56,10 +57,11 @@ interface ITaskSelection {
 
 interface ITaskTableProps {
     setSnackbarOpen: (open: boolean) => void,
-    setTaskTime: (time: string) => void
+    setTaskTime: (time: string) => void,
+    isEnabled: boolean
 }
 
-export default function TaskTable({ setSnackbarOpen, setTaskTime }: ITaskTableProps) {
+export default function TaskTable({ setSnackbarOpen, setTaskTime, isEnabled }: ITaskTableProps) {
     let [taskSheetData, setTaskSheetData] = useState<ITaskSheetData | null | undefined>(undefined);
     let [taskSheetStatus, setTaskSheetStatus] = useState<ITaskData[][] | undefined>(undefined);
     let [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
@@ -85,6 +87,14 @@ export default function TaskTable({ setSnackbarOpen, setTaskTime }: ITaskTablePr
 
         setTaskSheetData(fetchData);
         await fetchSheetStatus();
+    }
+
+    if (!isEnabled) {
+        return (
+            <Alert icon={<InfoIcon fontSize="inherit" />} severity="info">
+                Please select a user first!
+            </Alert>
+        )
     }
 
     if (taskSheetData === null) {
