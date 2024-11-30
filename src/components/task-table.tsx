@@ -37,6 +37,8 @@ enum DayToIndex {
     "sunday" = 6
 }
 
+const IndexToDay = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+
 interface ITaskSheetData {
     "id": string,
     "name": string,
@@ -58,10 +60,11 @@ interface ITaskSelection {
 interface ITaskTableProps {
     setSnackbarOpen: (open: boolean) => void,
     setTaskTime: (time: string) => void,
-    isEnabled: boolean
+    isEnabled: boolean,
+    username: string | null
 }
 
-export default function TaskTable({ setSnackbarOpen, setTaskTime, isEnabled }: ITaskTableProps) {
+export default function TaskTable({ setSnackbarOpen, setTaskTime, isEnabled, username }: ITaskTableProps) {
     let [taskSheetData, setTaskSheetData] = useState<ITaskSheetData | null | undefined>(undefined);
     let [taskSheetStatus, setTaskSheetStatus] = useState<ITaskData[][] | undefined>(undefined);
     let [menuAnchor, setMenuAnchor] = useState<HTMLElement | null>(null);
@@ -180,26 +183,52 @@ export default function TaskTable({ setSnackbarOpen, setTaskTime, isEnabled }: I
         const dayKey = taskSelection.day.toLowerCase() as keyof typeof DayToIndex;
         const dayIndex = DayToIndex[dayKey] as number;
         const taskStatus = taskSheetStatus[dayIndex][taskSelection.taskIndex].status;
+        const isUsersTask = indexContainsUsername(dayIndex, taskSelection.taskIndex);
 
         switch (taskStatus) {
             case TaskStatus.COMPLETE:
+                menuItems.push(<MenuItem key="getDetails" onClick={() => displayTaskData(dayIndex, taskSelection.taskIndex)} >Get Details</MenuItem>);
+
+                if(!isUsersTask) { break;}
                 menuItems.push(<MenuItem key="markIncomplete" onClick={() => setTaskStatus(false)} >Mark Incomplete</MenuItem>);
-                menuItems.push(<MenuItem key="markComplete" onClick={() => displayTaskData(dayIndex, taskSelection.taskIndex)} >Get Details</MenuItem>);
 
                 break;
             case TaskStatus.INCOMPLETE:
+
+                if(!isUsersTask) { break;}
                 menuItems.push(<MenuItem key="markComplete" onClick={() => setTaskStatus(true)} >Mark Complete</MenuItem>);
                 break;
+        }
+
+        if (menuItems.length === 0) {
+            setMenuAnchor(null);
+            return null;
         }
 
         return menuItems;
     }
 
     function getClassByStatus(dayIndex: number, taskIndex: number): string {
-        if (!taskSheetStatus) {
-            return "";
+        if (!taskSheetStatus || !taskSheetData || !username) { return ""; }
+        const classList = [];
+        classList.push("task");
+        const statusClass = taskSheetStatus[dayIndex][taskIndex].status === TaskStatus.COMPLETE ? "task-complete" : "task-incomplete";
+        classList.push(statusClass);
+
+        if (indexContainsUsername(dayIndex, taskIndex)) {
+            classList.push("your-task");
         }
-        return taskSheetStatus[dayIndex][taskIndex].status === TaskStatus.COMPLETE ? "task-complete" : "task-incomplete";
+
+        return classList.join(" ");
+    }
+
+    function indexContainsUsername(dayIndex: number, taskIndex: number): boolean {
+        if (!taskSheetData || !username) {
+            return false;
+        }
+
+        const sheetDayIndex = IndexToDay[dayIndex] as keyof ITaskSheetData;
+        return taskSheetData[sheetDayIndex][taskIndex].includes(username.toLowerCase());
     }
 
     async function fetchSheetStatus() {
